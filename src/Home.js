@@ -9,12 +9,33 @@ const Home = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [videoIds, setVideoIds] = useState([]);
+  const [mostRecentVideoId, setMostRecentVideoId] = useState(null);
 
   function convertToIST(utcTime) {
     const date = new Date(utcTime);
     const istTime = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
     return istTime.toUTCString();
   }
+
+  // Fetch most recent video ID once on mount
+  useEffect(() => {
+    const fetchMostRecentVideoId = async () => {
+      try {
+        const response = await axios.get(
+          "https://23e5-2401-4900-8fca-f2fa-d05c-d057-18a9-bdba.ngrok-free.app/getid",
+          {
+            headers: {
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
+        );
+        setMostRecentVideoId(response.data.id); // Extract the ID string correctly
+      } catch (error) {
+        console.error("Error fetching most recent video ID:", error);
+      }
+    };
+    fetchMostRecentVideoId();
+  }, []);
 
   // Fetch video IDs once on mount
   useEffect(() => {
@@ -105,9 +126,18 @@ const Home = () => {
           </thead>
           <tbody>
             {data.map((item, index) => {
-              const videoSrc = videoIds[index]
-                ? `${videoURL}${videoIds[index]}/footage.mp4`
-                : `https://www.youtube.com/watch?v=jNQXAC9IVRw&pp=0gcJCdgAo7VqN5tD`;
+              let videoSrc;
+
+              if (index === 0 && mostRecentVideoId) {
+                // First row uses the most recent video ID from /getid endpoint
+                videoSrc = `${videoURL}${mostRecentVideoId}/footage.mp4`;
+              } else if (videoIds[index - 1]) {
+                // From second row onwards, use videoIds array, shifted by 1 because first row took mostRecentVideoId
+                videoSrc = `${videoURL}${videoIds[index - 1]}/footage.mp4`;
+              } else {
+                // fallback to youtube video
+                videoSrc = `https://www.youtube.com/watch?v=jNQXAC9IVRw&pp=0gcJCdgAo7VqN5tD`;
+              }
 
               return (
                 <tr className="tableTr" key={item.entry_id}>
